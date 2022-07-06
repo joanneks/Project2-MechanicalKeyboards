@@ -16,9 +16,45 @@ async function main() {
         res.send('hello world');
     });
 
-    // app.get('/listings', async function (req,res){
-    //     let osCompatibilityCriteria={}
-    // })
+    app.get('/listings', async function (req, res) {
+
+        // let criteria = {};
+        let hotSwappableQuery = req.query.hotSwappable;
+        function hotSwappableValidation(query) {
+            if (query === "yes") {
+                return true;
+            } else {
+                return false;
+            };
+        }
+
+        // if (req.query.hotSwappable) {
+        //     criteria['hotSwappable'] = {'$eq':hotSwappableValidation ('yes').toString()};
+        // };
+
+        let result = await db.collection('mechanical_keyboards').find({
+            'osCompatibility': { '$in': ['Windows'] },
+            'keyboard.keyboardSize': { '$in': ['100'] },
+            'hotSwappable': { '$eq': hotSwappableValidation('yes').toString() },
+            // 'hotSwappable' : {'$eq':'true'},
+            'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron'] },
+            // 'keycap.keycapProfile':{}
+
+            // 'osCompatibility': { '$in': [req.query.osCompatibility] }
+            // 'keyboard.keyboardSize' : {'$in':[req.query.keyboardSize]}
+            // 'hotSwappable' : {'$eq':[req.query.hotSwappable]}
+            // 'keyboard.keyboardBrand' : {'$exists':true, '$in':[req.query.keyboardBrand]},
+            // 'keycap.keycapManufacturer':{}
+        })
+
+        let resultCount = await db.collection('mechanical_keyboards').find({
+            osCompatibility: { '$in': ['Windows'] }
+            // osCompatibility: { '$in': [req.query.osCompatibility] }
+        }).count
+        res.send(await result.toArray());
+        console.log(await result.toArray());
+        // res.send(await resultCount);
+    })
 
     //create mechanical_keyboards collection data via ARC in database tgc18_mechanical_keyboards
     app.post('/create', async function (req, res) {
@@ -29,7 +65,7 @@ async function main() {
         let keyboardModel = req.body.keyboard.keyboardModel;
         let keyboardSize = req.body.keyboard.keyboardSize;
         let keyboardProductLink = req.body.keyboard.keyboardProductLink;
-        let keyboardImage= req.body.keyboard.keyboardImage;
+        let keyboardImage = req.body.keyboard.keyboardImage;
         let keycapModel = req.body.keycap.keycapModel;
         let keycapMaterial = req.body.keycap.keycapMaterial;
         let keycapProfile = req.body.keycap.keycapProfile;
@@ -55,7 +91,7 @@ async function main() {
                     keycapProfile,
                     keycapManufacturer
                 },
-                'user':{
+                'user': {
                     username,
                     email,
                     password
