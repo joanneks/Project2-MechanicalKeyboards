@@ -21,9 +21,16 @@ async function main() {
 
         let criteria = {};
         //add criteria selected by user to criteria object
+
+        console.log("comp ", req.query.osCompatibility)
         if (req.query.osCompatibility) {
-            criteria['osCompatibility'] = { '$in': [req.query.osCompatibility.toString()] };
+            if (Array.isArray(req.query.osCompatibility)) {
+                criteria['osCompatibility'] = { '$in': req.query.osCompatibility };
+            } else {
+                criteria['osCompatibility'] = { '$in': [req.query.osCompatibility] };
+            }
         };
+        console.log(req.query.hotSwappable)
         if (req.query.keyboardSize) {
             criteria['keyboard.keyboardSize'] = { '$in': [parseInt(req.query.keyboardSize)] };
         };
@@ -38,28 +45,32 @@ async function main() {
         };
         // create text index for text search
         db.collection('mechanical_keyboards').createIndex({
-            switches: "text",
-            keyboard: "text",
-            keycap: "text"
+            'switches': "text",
+            'keyboard.keyboardBrand': "text",
+            'keyboard.keyboardModel': "text",
+            'keycap.keycapModel': "text",
+            'keycap.keycapMaterial': "text",
+            'keycap.keycapProfile': "text",
+            'keycap.keycapManufacturer': "text",
         })
-        let result = await db.collection('mechanical_keyboards').find({ criteria });
-        let resultCount = await db.collection('mechanical_keyboards').find({ criteria }).count();
 
-        //tofu65 text search does not work
+        let result = await db.collection('mechanical_keyboards').find( criteria );
+        let resultCount = await db.collection('mechanical_keyboards').find( criteria ).count();
+
         let result1 = await db.collection('mechanical_keyboards').find({
             'osCompatibility': { '$in': ["Windows"] },
-            'keyboard.keyboardSize' : {'$in':["80"]},
-            'hotSwappable' : {'$eq':"false"},
-            'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans','Pizzakeyboard','Wuque Studios'] },
-            '$text': { '$search': "alpaca", '$caseSensitive': false }
+            'keyboard.keyboardSize': { '$in': ["80","100","65"] },
+            'hotSwappable': { '$eq': "false" },
+            'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
+            '$text': { '$search': "tofu65", '$caseSensitive': false }
         })
 
         let resultCount1 = await db.collection('mechanical_keyboards').find({
             'osCompatibility': { '$in': ["Windows"] },
-            'keyboard.keyboardSize' : {'$in':["80"]},
-            'hotSwappable' : {'$eq':"false"},
-            'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans','Pizzakeyboard','Wuque Studios'] },
-            '$text': { '$search': "alpaca", '$caseSensitive': false }
+            'keyboard.keyboardSize': { '$in': ["80","100","65"] },
+            'hotSwappable': { '$eq': "false" },
+            'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
+            '$text': { '$search': "tofu65", '$caseSensitive': false }
         }).count()
 
         let displayResponse = {
@@ -72,57 +83,62 @@ async function main() {
         res.send(displayResponse);
     })
 
-        // Validation functions
-        let allErrorMessage = []
-        function urlValidation(query) {
-            if (query.includes("https://", 0)) {
-                return query
-            } else {
-                let errorMessage = "Not a valid link, must start with https://"
-                return errorMessage = "Not a valid link, must start with https://"
-            }
+    // Validation functions
+    function urlValidation(query) {
+        if (query.includes("https://", 0)) {
+            return query;
+        } else {
+            return false;
+            // return errorMessage = "Not a valid link, must start with https://"
         }
-        function textValidation(query) {
-            if (query.length >= 3) {
-                return query;
+    }
+    function textValidation(query) {
+        if (query.length >= 3) {
+            return query;
+        } else {
+            return false;
+            // return errorMessage = "Must be at least 3 characters long";
+        };
+    };
+    function emailValidation(query) {
+        if (query.includes("@") && query.length > 10) {
+            return query;
+        } else {
+            return false;
+            // return errorMessage = "Must be a valid email address that includes @ and be more than 10 characters long";
+        };
+    };
+    function passwordValidation(query) {
+        let condition1 = false;
+        let condition2 = false;
+        for (let i = 0; i < query.length; i++) {
+            if (isNaN(query[i])) {
+                condition1 = false;
             } else {
-                return errorMessage = "Must be at least 3 characters long"
+                condition1 = true;
+                break;
             };
         };
-        function emailValidation(query) {
-            if (query.includes("@") && query.length>10) {
-                return query;
-            } else {
-                return errorMessage = "Must be a valid email address that includes @ and be more than 10 characters long"
-            };
-        };
-        function passwordValidation(query){
-            let condition1 = false;
-            let condition2 = false;
-            let conditionMet = condition1 || condition2;
-            for (let i=0;i<query.length;i++){
-                if (isNaN(query[i])){
-                    condition1 = false;
-                } else{
-                    condition1 = true;
+        for (let i = 0; i < query.length; i++) {
+            let specialCharacters = ["!", "@", "#", "$", "%"]
+            for (let each of specialCharacters) {
+                if (query[i] === each) {
+                    condition2 = true;
                     break;
+                } else {
+                    condition2 = false;
                 };
-                specialCharacters = ["!","@","#","$","%"]
-                for (each of specialCharacters){
-                    if(query[i] === each){
-                        condition2 = true;
-                        break;
-                    }else{
-                        condition2 = false;
-                    };
-                }
-            }
-            if (conditionMet){
-                return query;
-            } else{
-                return errorMessage = "Password must contain a number and one of these special characters: !,@,#,$ "
-            }
+            };
+        };
+        console.log(condition1,condition2)
+        let conditionMet = condition1 && condition2
+        if (conditionMet) {
+            return query;
+        } else {
+            return false;
+            // return errorMessage = "Password must contain a number and one of these special characters: !,@,#,$ ";
         }
+    }
 
     //create mechanical_keyboards collection data via ARC in database tgc18_mechanical_keyboards
     app.post('/listings/create', async function (req, res) {
@@ -142,43 +158,99 @@ async function main() {
         let email = emailValidation(req.body.user.email);
         let password = passwordValidation(req.body.user.password);
 
-        try {
-            let result = await db.collection("mechanical_keyboards").insertOne({
-                osCompatibility,
-                hotSwappable,
-                switches,
-                'keyboard': {
-                    keyboardBrand,
-                    keyboardModel,
-                    keyboardSize,
-                    keyboardProductLink,
-                    keyboardImage
-                },
-                'keycap': {
-                    keycapModel,
-                    keycapMaterial,
-                    keycapProfile,
-                    keycapManufacturer
-                },
-                'user': {
-                    username,
-                    email,
-                    password
-                },
-            })
-            res.status(200);
-            res.send(result)
-        } catch (e) {
-            res.status(500);
-            res.send({
-                error: "Internal server error, please contact administrator"
-            })
-            console.log(e)
+        let existUser = await db.collection('mechanical_keyboards').find(
+            { 'user.username': { '$eq': req.body.user.username } },
+            { 'user.username': 1 }
+        )
 
-        }
+        console.log(await existUser.toArray())
+        // let displayResponseAllEmails = {
+        //     data: await allEmails.toArray()
+        // };
+        // res.send(displayResponseAllEmails);
+        validInput = (
+            keyboardBrand == false ||
+            keyboardModel == false ||
+            keyboardProductLink == false ||
+            keyboardImage == false ||
+            keycapModel == false ||
+            keycapManufacturer == false ||
+            email == false ||
+            password == false
+        )
+        
+        if (validInput == false) {
+            console.log("else--->" + validInput)
+            console.log("Field Value Valid")
+            try {
+                let result = await db.collection("mechanical_keyboards").insertOne({
+                    osCompatibility,
+                    hotSwappable,
+                    switches,
+                    'keyboard': {
+                        keyboardBrand,
+                        keyboardModel,
+                        keyboardSize,
+                        keyboardProductLink,
+                        keyboardImage
+                    },
+                    'keycap': {
+                        keycapModel,
+                        keycapMaterial,
+                        keycapProfile,
+                        keycapManufacturer
+                    },
+                    'user': {
+                        username,
+                        email,
+                        password
+                    },
+                })
+                res.status(200);
+                res.send(result)
+            } catch (e) {
+                res.status(500);
+                res.send({
+                    error: "Internal server error, please contact administrator"
+                })
+                console.log(e)
+    
+            }
+        } else {
+            console.log("if--->" + validInput)
+            res.status(400)
+            res.send({
+                error: "Field Value invalid"
+            })
+        };
+        
+        
     })
 
-    app.put('/listings/edit/:id', async function(req,res){
+    app.put('/listings/review/:id', async function (req, res) {
+        // let reviewId = Math.floor(Math.random()*9999+1);
+        let comments = req.body.comments
+        let username = req.body.username
+
+        // let resultsEditReviews = await db.collection('mechanical_keyboards').find({
+        //     'reviews.reviewId': ObjectId(req.params.id),
+        // });
+
+        // console.log(await resultsEditReviews.toArray());
+
+        let resultsEditReviews = await db.collection('mechanical_keyboards').updateOne({
+            'reviews.reviewId': ObjectId(req.params.id),
+        }, {
+            '$set': {
+                "reviews.$.username": username,
+                "reviews.$.comments": comments
+            }
+        });
+        res.status(200);
+        res.json(resultsEditReviews);
+    });
+
+    app.put('/listings/edit/:id', async function (req, res) {
         let osCompatibility = req.body.osCompatibility; //checkbox
         let hotSwappable = req.body.hotSwappable; //radio button
         let switches = req.body.switches; // text --> validation more than 3 characters
@@ -194,11 +266,11 @@ async function main() {
         let username = req.body.user.username;
         let email = emailValidation(req.body.user.email);
         let password = passwordValidation(req.body.user.password);
-
-        let results = await db.collection('mechanical_keyboards').updateOne({
+        
+        let resultsEditListing = await db.collection('mechanical_keyboards').updateOne({
             '_id': ObjectId(req.params.id)
-        },{
-            '$set':{
+        }, {
+            '$set': {
                 osCompatibility,
                 hotSwappable,
                 switches,
@@ -219,22 +291,21 @@ async function main() {
                     username,
                     email,
                     password
-                },
+                }
             }
         });
         res.status(200);
-        res.json(results);
-        console.log(passwordValidation("Rainbow231!"))
+        res.json(resultsEditListing);
     })
-    
 
-    app.delete('/listings/delete/:id', async function(req,res){
+
+    app.delete('/listings/delete/:id', async function (req, res) {
         let results = await db.collection('mechanical_keyboards').deleteOne({
             '_id': ObjectId(req.params.id)
         });
         res.status(200);
         res.json({
-            'status':'Ok'
+            'status': 'Ok'
         })
     })
 
