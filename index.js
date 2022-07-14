@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const MongoUtil = require('./MongoUtil.js');
 require("dotenv").config();
-const MONGO_URI = process.env.MONGO_URI
+const MONGO_URI = process.env.MONGO_URI;
 const { ObjectId } = require('mongodb');
 
 const app = express();
@@ -22,7 +22,6 @@ async function main() {
         let criteria = {};
         //add criteria selected by user to criteria object
 
-        console.log("comp ", req.query.osCompatibility)
         if (req.query.osCompatibility) {
             if (Array.isArray(req.query.osCompatibility)) {
                 criteria['osCompatibility'] = { '$in': req.query.osCompatibility };
@@ -30,7 +29,6 @@ async function main() {
                 criteria['osCompatibility'] = { '$in': [req.query.osCompatibility] };
             }
         };
-        console.log(req.query.hotSwappable)
         if (req.query.keyboardSize) {
             criteria['keyboard.keyboardSize'] = { '$in': [parseInt(req.query.keyboardSize)] };
         };
@@ -223,8 +221,35 @@ async function main() {
                 error: "Field Value invalid"
             })
         };
-        
-        
+    })
+
+    //create review
+    app.post('/listings/review/create/:id', async function (req,res){
+        // let reviewId = new ObjectId();
+        let comments = req.body.comments
+        let username = req.body.username
+        // let reviewsExist = await db.mechanical_keyboards.find({
+        //     '_id':ObjectId(req.params.id),
+        //     'reviews':{ '$exists':true}
+        // }).count()
+        console.log(comments)
+        console.log(username)
+        let resultCreateReview = await db.collection('mechanical_keyboards').updateOne(
+            {'_id':ObjectId(req.params.id)},
+            {
+                '$push': {
+                    'reviews':{
+                        reviewId: new ObjectId(),
+                        username,
+                        comments
+                    }
+                }
+            }
+        )
+        console.log(resultCreateReview)
+        res.status(200);
+        res.send(resultCreateReview)
+        // res.json(resultCreateReview)
     })
 
     app.put('/listings/review/:id', async function (req, res) {
@@ -242,8 +267,8 @@ async function main() {
             'reviews.reviewId': ObjectId(req.params.id),
         }, {
             '$set': {
-                "reviews.$.username": username,
-                "reviews.$.comments": comments
+                'reviews.$.username': username,
+                'reviews.$.comments': comments
             }
         });
         res.status(200);
@@ -297,7 +322,6 @@ async function main() {
         res.status(200);
         res.json(resultsEditListing);
     })
-
 
     app.delete('/listings/delete/:id', async function (req, res) {
         let results = await db.collection('mechanical_keyboards').deleteOne({
