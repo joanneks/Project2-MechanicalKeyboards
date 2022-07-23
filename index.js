@@ -24,19 +24,31 @@ async function main() {
 
         if (req.query.osCompatibility) {
             if (Array.isArray(req.query.osCompatibility)) {
-                criteria['osCompatibility'] = { '$in': req.query.osCompatibility };
+                criteria['osCompatibility'] = { '$in': [req.query.osCompatibility] };
             } else {
                 criteria['osCompatibility'] = { '$in': [req.query.osCompatibility] };
             }
         };
-        if (req.query.keyboardSize) {
-            criteria['keyboard.keyboardSize'] = { '$in': [parseInt(req.query.keyboardSize)] };
-        };
         if (req.query.hotSwappable) {
-            criteria['hotSwappable'] = { '$eq': [req.query.hotSwappable.toString()] };
+            criteria['hotSwappable'] = { '$eq': req.query.hotSwappable.toString() };
+        };
+        if (req.query.keyboardSize) {
+            let keyboardSize = req.query.keyboardSize
+            if (keyboardSize.includes(',')) {
+                keyboardSize = keyboardSize.split(',')
+                criteria['keyboard.keyboardSize'] = { '$in': keyboardSize };
+            } else {
+                criteria['keyboard.keyboardSize'] = { '$in': [req.query.keyboardSize] };
+            }
         };
         if (req.query.keyboardBrand) {
-            criteria['keyboard.keyboardBrand'] = { '$exists': true, '$in': [req.query.keyboardBrand.toString()] };
+            let keyboardBrand = req.query.keyboardBrand
+            if (keyboardBrand.includes(',')) {
+                keyboardBrand = keyboardBrand.split(',')
+                criteria['keyboard.keyboardBrand'] = { '$exists': true, '$in': keyboardBrand };
+            } else {
+                criteria['keyboard.keyboardBrand'] = { '$exists': true, '$in': [keyboardBrand] };
+            }
         };
         if (req.query.textSearch) {
             criteria['text'] = { '$search': [req.query.textSearch], '$caseSensitive': false }
@@ -52,20 +64,22 @@ async function main() {
             'keycap.keycapManufacturer': "text",
         })
 
-        let result = await db.collection('mechanical_keyboards').find( criteria );
-        let resultCount = await db.collection('mechanical_keyboards').find( criteria ).count();
+        let result = await db.collection('mechanical_keyboards').find(criteria);
+        let resultCount = await db.collection('mechanical_keyboards').find(criteria).count();
+        let result1 = await db.collection('mechanical_keyboards').find({});
+        let resultCount1 = await db.collection('mechanical_keyboards').find({}).count();
 
-        let result1 = await db.collection('mechanical_keyboards').find({
+        let result2 = await db.collection('mechanical_keyboards').find({
             'osCompatibility': { '$in': ["Windows"] },
-            'keyboard.keyboardSize': { '$in': ["80","100","65"] },
+            'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
             'hotSwappable': { '$eq': "false" },
             'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
             '$text': { '$search': "tofu65", '$caseSensitive': false }
         })
 
-        let resultCount1 = await db.collection('mechanical_keyboards').find({
+        let resultCount2 = await db.collection('mechanical_keyboards').find({
             'osCompatibility': { '$in': ["Windows"] },
-            'keyboard.keyboardSize': { '$in': ["80","100","65"] },
+            'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
             'hotSwappable': { '$eq': "false" },
             'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
             '$text': { '$search': "tofu65", '$caseSensitive': false }
@@ -75,9 +89,12 @@ async function main() {
             data: await result.toArray(),
             count: await resultCount,
             data1: await result1.toArray(),
-            count1: await resultCount1
+            count1: await resultCount1,
+            data2: await result2.toArray(),
+            count2: await resultCount2
         };
-
+        console.log(req.query.osCompatibility, req.query.hotSwappable, req.query.keyboardSize)
+        console.log(criteria)
         res.send(displayResponse);
     })
 
@@ -128,7 +145,7 @@ async function main() {
                 };
             };
         };
-        console.log(condition1,condition2)
+        console.log(condition1, condition2)
         let conditionMet = condition1 && condition2
         if (conditionMet) {
             return query;
@@ -156,16 +173,6 @@ async function main() {
         let email = emailValidation(req.body.user.email);
         let password = passwordValidation(req.body.user.password);
 
-        let existUser = await db.collection('mechanical_keyboards').find(
-            { 'user.username': { '$eq': req.body.user.username } },
-            { 'user.username': 1 }
-        )
-
-        console.log(await existUser.toArray())
-        // let displayResponseAllEmails = {
-        //     data: await allEmails.toArray()
-        // };
-        // res.send(displayResponseAllEmails);
         validInput = (
             keyboardBrand == false ||
             keyboardModel == false ||
@@ -176,6 +183,32 @@ async function main() {
             email == false ||
             password == false
         )
+
+        let record= {
+            osCompatibility,
+            hotSwappable,
+            switches,
+            'keyboard': {
+                keyboardBrand,
+                keyboardModel,
+                keyboardSize,
+                keyboardProductLink,
+                keyboardImage
+            },
+            'keycap': {
+                keycapModel,
+                keycapMaterial,
+                keycapProfile,
+                keycapManufacturer
+            },
+            'user': {
+                username,
+                email,
+                password
+            },
+            'reviews':[null]
+        }
+        console.log(record)
         
         if (validInput == false) {
             console.log("else--->" + validInput)
@@ -203,7 +236,14 @@ async function main() {
                         email,
                         password
                     },
+                    'reviews':[]
                 })
+                let item = await db.collection('mechanical_keyboards').find({},{'_id':'1'}).sort({_id:-1}).toArray()
+                item = item[0]
+                result.insertedId = item._id;
+                console.log("insertedId-------",item)
+                console.log("insertedId-------",result.insertedId)
+
                 res.status(200);
                 res.send(result)
             } catch (e) {
@@ -212,7 +252,7 @@ async function main() {
                     error: "Internal server error, please contact administrator"
                 })
                 console.log(e)
-    
+
             }
         } else {
             console.log("if--->" + validInput)
@@ -224,55 +264,76 @@ async function main() {
     })
 
     //create review
-    app.post('/listings/review/create/:id', async function (req,res){
-        // let reviewId = new ObjectId();
-        let comments = req.body.comments
-        let username = req.body.username
-        // let reviewsExist = await db.mechanical_keyboards.find({
-        //     '_id':ObjectId(req.params.id),
-        //     'reviews':{ '$exists':true}
-        // }).count()
-        console.log(comments)
-        console.log(username)
+    app.post('/listings/review/create/:id', async function (req, res) {
+        let comments = req.body.comments;
+        let username = req.body.username;
+        let email = req.body.email;
         let resultCreateReview = await db.collection('mechanical_keyboards').updateOne(
-            {'_id':ObjectId(req.params.id)},
+            { '_id': ObjectId(req.params.id) },
             {
                 '$push': {
-                    'reviews':{
+                    'reviews': {
                         reviewId: new ObjectId(),
                         username,
+                        email,
                         comments
                     }
                 }
             }
         )
-        console.log(resultCreateReview)
+        let item = await db.collection('mechanical_keyboards').findOne(
+            { '_id': ObjectId(req.params.id) }
+        )
+        resultCreateReview.insertedId = item.reviews.slice(-1)[0].reviewId;
+        console.log(resultCreateReview.insertedId)
         res.status(200);
-        res.send(resultCreateReview)
-        // res.json(resultCreateReview)
+        res.json(resultCreateReview)
     })
 
-    app.put('/listings/review/:id', async function (req, res) {
-        // let reviewId = Math.floor(Math.random()*9999+1);
-        let comments = req.body.comments
-        let username = req.body.username
+    app.post('/listings/review/delete/:id', async function (req, res) {
+        try {
+            let resultDeleteReview = await db.collection('mechanical_keyboards').updateOne(
+                { 'reviews.reviewId': ObjectId(req.params.id) },
+                {
+                    '$pull': {
+                        'reviews':
+                        {
+                            'reviewId': ObjectId(req.params.id)
+                        }
+                    }
+                }
+            )
+            res.status(200);
+            res.json(resultDeleteReview)
+        } catch (e) {
+            res.status(500);
+            res.send({
+                error: "Internal server error, please contact administrator"
+            })
+            console.log(e)
+        }
+    })
 
-        // let resultsEditReviews = await db.collection('mechanical_keyboards').find({
-        //     'reviews.reviewId': ObjectId(req.params.id),
-        // });
+    app.post('/listings/review/edit/:id', async function (req, res) {
+        try {
+            let comments = req.body.comments
 
-        // console.log(await resultsEditReviews.toArray());
-
-        let resultsEditReviews = await db.collection('mechanical_keyboards').updateOne({
-            'reviews.reviewId': ObjectId(req.params.id),
-        }, {
-            '$set': {
-                'reviews.$.username': username,
-                'reviews.$.comments': comments
-            }
-        });
-        res.status(200);
-        res.json(resultsEditReviews);
+            let resultsEditReview = await db.collection('mechanical_keyboards').updateOne({
+                'reviews.reviewId': ObjectId(req.params.id),
+            }, {
+                '$set': {
+                    'reviews.$.comments': comments
+                }
+            });
+            res.status(200);
+            res.json(resultsEditReview);
+        } catch (e) {
+            res.status(500);
+            res.send({
+                error: "Internal server error, please contact administrator"
+            })
+            console.log(e)
+        }
     });
 
     app.put('/listings/edit/:id', async function (req, res) {
@@ -291,7 +352,12 @@ async function main() {
         let username = req.body.user.username;
         let email = emailValidation(req.body.user.email);
         let password = passwordValidation(req.body.user.password);
-        
+        let resultsEditListingFind = await db.collection('mechanical_keyboards').findOne({
+            '_id': ObjectId(req.params.id)
+            },{
+
+            }
+        )
         let resultsEditListing = await db.collection('mechanical_keyboards').updateOne({
             '_id': ObjectId(req.params.id)
         }, {
@@ -322,6 +388,7 @@ async function main() {
         res.status(200);
         res.json(resultsEditListing);
     })
+
 
     app.delete('/listings/delete/:id', async function (req, res) {
         let results = await db.collection('mechanical_keyboards').deleteOne({
