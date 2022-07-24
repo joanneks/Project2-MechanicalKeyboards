@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const MongoUtil = require('./MongoUtil.js');
+const TextValidation = require('./TextValidation.js')
+const UrlValidation = require('./UrlValidation.js')
+const EmailValidation = require('./EmailValidation.js')
 require("dotenv").config();
 const MONGO_URI = process.env.MONGO_URI;
 const { ObjectId } = require('mongodb');
@@ -69,110 +72,65 @@ async function main() {
         let result1 = await db.collection('mechanical_keyboards').find({});
         let resultCount1 = await db.collection('mechanical_keyboards').find({}).count();
 
-        let result2 = await db.collection('mechanical_keyboards').find({
-            'osCompatibility': { '$in': ["Windows"] },
-            'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
-            'hotSwappable': { '$eq': "false" },
-            'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
-            '$text': { '$search': "tofu65", '$caseSensitive': false }
-        })
+        // let result2 = await db.collection('mechanical_keyboards').find({
+        //     'osCompatibility': { '$in': ["Windows"] },
+        //     'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
+        //     'hotSwappable': { '$eq': "false" },
+        //     'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
+        //     '$text': { '$search': "tofu65", '$caseSensitive': false }
+        // })
 
-        let resultCount2 = await db.collection('mechanical_keyboards').find({
-            'osCompatibility': { '$in': ["Windows"] },
-            'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
-            'hotSwappable': { '$eq': "false" },
-            'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
-            '$text': { '$search': "tofu65", '$caseSensitive': false }
-        }).count()
+        // let resultCount2 = await db.collection('mechanical_keyboards').find({
+        //     'osCompatibility': { '$in': ["Windows"] },
+        //     'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
+        //     'hotSwappable': { '$eq': "false" },
+        //     'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
+        //     '$text': { '$search': "tofu65", '$caseSensitive': false }
+        // }).count()
 
         let displayResponse = {
             data: await result.toArray(),
             count: await resultCount,
             data1: await result1.toArray(),
-            count1: await resultCount1,
-            data2: await result2.toArray(),
-            count2: await resultCount2
+            count1: await resultCount1
         };
         console.log(req.query.osCompatibility, req.query.hotSwappable, req.query.keyboardSize)
         console.log(criteria)
         res.send(displayResponse);
     })
 
-    // Validation functions
-    function urlValidation(query) {
-        if (query.includes("https://", 0)) {
-            return query;
-        } else {
-            return false;
-            // return errorMessage = "Not a valid link, must start with https://"
-        }
-    }
-    function textValidation(query) {
-        if (query.length >= 3) {
-            return query;
-        } else {
-            return false;
-            // return errorMessage = "Must be at least 3 characters long";
-        };
-    };
-    function emailValidation(query) {
-        if (query.includes("@") && query.length > 10) {
-            return query;
-        } else {
-            return false;
-            // return errorMessage = "Must be a valid email address that includes @ and be more than 10 characters long";
-        };
-    };
-    function passwordValidation(query) {
-        let condition1 = false;
-        let condition2 = false;
-        for (let i = 0; i < query.length; i++) {
-            if (isNaN(query[i])) {
-                condition1 = false;
-            } else {
-                condition1 = true;
-                break;
-            };
-        };
-        for (let i = 0; i < query.length; i++) {
-            let specialCharacters = ["!", "@", "#", "$", "%"]
-            for (let each of specialCharacters) {
-                if (query[i] === each) {
-                    condition2 = true;
-                    break;
-                } else {
-                    condition2 = false;
-                };
-            };
-        };
-        console.log(condition1, condition2)
-        let conditionMet = condition1 && condition2
-        if (conditionMet) {
-            return query;
-        } else {
-            return false;
-            // return errorMessage = "Password must contain a number and one of these special characters: !,@,#,$ ";
-        }
-    }
-
     //create mechanical_keyboards collection data via ARC in database tgc18_mechanical_keyboards
     app.post('/listings/create', async function (req, res) {
         let osCompatibility = req.body.osCompatibility; //checkbox
+        if(osCompatibility==="Windows" || osCompatibility==="Mac" || osCompatibility==="Linux"){
+            osCompatibility = req.body.osCompatibility;
+        }else{
+            osCompatibility = false;
+        };
         let hotSwappable = req.body.hotSwappable; //radio button
-        let switches = req.body.switches; // text --> validation more than 3 characters
-        let keyboardBrand = textValidation(req.body.keyboard.keyboardBrand); // dropdown with others option as text --> validation more than or equals to 3 characters
-        let keyboardModel = textValidation(req.body.keyboard.keyboardModel); // text --> validation more than or equals to 3 characters
-        let keyboardSize = req.body.keyboard.keyboardSize;// dropdown
-        let keyboardProductLink = urlValidation(req.body.keyboard.keyboardProductLink); // text -->validation, starts with https://
-        let keyboardImage = urlValidation(req.body.keyboard.keyboardImage); // text -->validation, starts with https://
-        let keycapModel = textValidation(req.body.keycap.keycapModel); // text --> validation more than or equals to 3 characters
-        let keycapMaterial = req.body.keycap.keycapMaterial; // radio button
-        let keycapProfile = req.body.keycap.keycapProfile; // dropdown
-        let keycapManufacturer = textValidation(req.body.keycap.keycapManufacturer); // text --> validation more than or equals to 3 characters
-        let username = req.body.user.username;
-        let email = emailValidation(req.body.user.email);
-        let password = passwordValidation(req.body.user.password);
-
+        if (hotSwappable==="true" || hotSwappable ==="false"){
+            hotSwappable = req.body.hotSwappable;
+        }else {
+            hotSwappable = false;
+        };
+        let switches = TextValidation.connect(req.body.switches,5); 
+        let keyboardBrand = TextValidation.connect(req.body.keyboard.keyboardBrand,5);
+        let keyboardModel = TextValidation.connect(req.body.keyboard.keyboardModel,3);
+        let keyboardSize = req.body.keyboard.keyboardSize;
+        if(keyboardSize==="60" || keyboardSize==="65" || keyboardSize==="75" || keyboardSize==="80" || keyboardSize==="100"){
+            keyboardSize = req.body.keyboard.keyboardSize;
+        }else{
+            keyboardSize = false
+        }
+        let keyboardProductLink = UrlValidation.connect(req.body.keyboard.keyboardProductLink); 
+        let keyboardImage = UrlValidation.connect(req.body.keyboard.keyboardImage); 
+        let keycapModel = TextValidation.connect(req.body.keycap.keycapModel,3); 
+        let keycapMaterial = TextValidation.connect(req.body.keycap.keycapMaterial,3); 
+        let keycapProfile = TextValidation.connect(req.body.keycap.keycapProfile,2); 
+        let keycapManufacturer = TextValidation.connect(req.body.keycap.keycapManufacturer,3); 
+        let username = TextValidation.connect(req.body.user.username,5);
+        let email = EmailValidation.connect(req.body.user.email);
+        
         validInput = (
             keyboardBrand == false ||
             keyboardModel == false ||
@@ -180,8 +138,7 @@ async function main() {
             keyboardImage == false ||
             keycapModel == false ||
             keycapManufacturer == false ||
-            email == false ||
-            password == false
+            email == false 
         )
 
         let record= {
@@ -203,8 +160,7 @@ async function main() {
             },
             'user': {
                 username,
-                email,
-                password
+                email
             },
             'reviews':[null]
         }
@@ -233,8 +189,7 @@ async function main() {
                     },
                     'user': {
                         username,
-                        email,
-                        password
+                        email
                     },
                     'reviews':[]
                 })
@@ -351,7 +306,6 @@ async function main() {
         let keycapManufacturer = textValidation(req.body.keycap.keycapManufacturer); // text --> validation more than or equals to 3 characters
         let username = req.body.user.username;
         let email = emailValidation(req.body.user.email);
-        let password = passwordValidation(req.body.user.password);
         let resultsEditListingFind = await db.collection('mechanical_keyboards').findOne({
             '_id': ObjectId(req.params.id)
             },{
@@ -380,8 +334,7 @@ async function main() {
                 },
                 'user': {
                     username,
-                    email,
-                    password
+                    email
                 }
             }
         });
@@ -427,8 +380,7 @@ main();
 //     },
 //     "user":{
 //         "username":"candice854",
-//         "email":"candice854@gmail.com",
-//         "password:"Curry3gg!"
+//         "email":"candice854@gmail.com"
 //     }
 //     'reviews':[
 //         {'_id':'r_id1',reviewer:Avery},      
