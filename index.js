@@ -99,49 +99,55 @@ async function main() {
         res.send(displayResponse);
     })
 
-    //create mechanical_keyboards collection data via ARC in database tgc18_mechanical_keyboards
     app.post('/listings/create', async function (req, res) {
-        let osCompatibility = req.body.osCompatibility; //checkbox
-        if(osCompatibility==="Windows" || osCompatibility==="Mac" || osCompatibility==="Linux"){
+        let osCompatibility = req.body.osCompatibility;
+        if (osCompatibility === "Windows" || osCompatibility === "Mac" || osCompatibility === "Linux") {
             osCompatibility = req.body.osCompatibility;
-        }else{
+        } else {
             osCompatibility = false;
         };
-        let hotSwappable = req.body.hotSwappable; //radio button
-        if (hotSwappable==="true" || hotSwappable ==="false"){
+        let hotSwappable = req.body.hotSwappable;
+        if (hotSwappable === "true" || hotSwappable === "false") {
             hotSwappable = req.body.hotSwappable;
-        }else {
+        } else {
             hotSwappable = false;
         };
-        let switches = TextValidation.connect(req.body.switches,5); 
-        let keyboardBrand = TextValidation.connect(req.body.keyboard.keyboardBrand,5);
-        let keyboardModel = TextValidation.connect(req.body.keyboard.keyboardModel,3);
+        let switches = TextValidation.connect(req.body.switches, 5);
+        let keyboardBrand = TextValidation.connect(req.body.keyboard.keyboardBrand, 5);
+        let keyboardModel = TextValidation.connect(req.body.keyboard.keyboardModel, 3);
         let keyboardSize = req.body.keyboard.keyboardSize;
-        if(keyboardSize==="60" || keyboardSize==="65" || keyboardSize==="75" || keyboardSize==="80" || keyboardSize==="100"){
+        if (keyboardSize === "60" || keyboardSize === "65" || keyboardSize === "75" || keyboardSize === "80" || keyboardSize === "100") {
             keyboardSize = req.body.keyboard.keyboardSize;
-        }else{
+        } else {
             keyboardSize = false
         }
-        let keyboardProductLink = UrlValidation.connect(req.body.keyboard.keyboardProductLink); 
-        let keyboardImage = UrlValidation.connect(req.body.keyboard.keyboardImage); 
-        let keycapModel = TextValidation.connect(req.body.keycap.keycapModel,3); 
-        let keycapMaterial = TextValidation.connect(req.body.keycap.keycapMaterial,3); 
-        let keycapProfile = TextValidation.connect(req.body.keycap.keycapProfile,2); 
-        let keycapManufacturer = TextValidation.connect(req.body.keycap.keycapManufacturer,3); 
-        let username = TextValidation.connect(req.body.user.username,5);
+        let keyboardProductLink = UrlValidation.connect(req.body.keyboard.keyboardProductLink);
+        let keyboardImage = UrlValidation.connect(req.body.keyboard.keyboardImage);
+        let keycapModel = TextValidation.connect(req.body.keycap.keycapModel, 3);
+        let keycapMaterial = TextValidation.connect(req.body.keycap.keycapMaterial, 3);
+        let keycapProfile = TextValidation.connect(req.body.keycap.keycapProfile, 2);
+        let keycapManufacturer = TextValidation.connect(req.body.keycap.keycapManufacturer, 3);
+        let username = TextValidation.connect(req.body.user.username, 5);
         let email = EmailValidation.connect(req.body.user.email);
-        
+
         validInput = (
+            osCompatibility == false ||
+            hotSwappable == false ||
+            switches == false ||
             keyboardBrand == false ||
             keyboardModel == false ||
+            keyboardSize == false ||
             keyboardProductLink == false ||
             keyboardImage == false ||
             keycapModel == false ||
+            keycapMaterial == false ||
+            keycapProfile == false ||
             keycapManufacturer == false ||
-            email == false 
+            username == false ||
+            email == false
         )
 
-        let record= {
+        let record = {
             osCompatibility,
             hotSwappable,
             switches,
@@ -162,42 +168,20 @@ async function main() {
                 username,
                 email
             },
-            'reviews':[null]
+            'reviews': []
         }
         console.log(record)
-        
+
         if (validInput == false) {
             console.log("else--->" + validInput)
             console.log("Field Value Valid")
             try {
-                let result = await db.collection("mechanical_keyboards").insertOne({
-                    osCompatibility,
-                    hotSwappable,
-                    switches,
-                    'keyboard': {
-                        keyboardBrand,
-                        keyboardModel,
-                        keyboardSize,
-                        keyboardProductLink,
-                        keyboardImage
-                    },
-                    'keycap': {
-                        keycapModel,
-                        keycapMaterial,
-                        keycapProfile,
-                        keycapManufacturer
-                    },
-                    'user': {
-                        username,
-                        email
-                    },
-                    'reviews':[]
-                })
-                let item = await db.collection('mechanical_keyboards').find({},{'_id':'1'}).sort({_id:-1}).toArray()
+                let result = await db.collection("mechanical_keyboards").insertOne(record)
+                let item = await db.collection('mechanical_keyboards').find({}, { '_id': '1' }).sort({ _id: -1 }).toArray()
                 item = item[0]
                 result.insertedId = item._id;
-                console.log("insertedId-------",item)
-                console.log("insertedId-------",result.insertedId)
+                console.log("insertedId-------", item)
+                console.log("insertedId-------", result.insertedId)
 
                 res.status(200);
                 res.send(result)
@@ -292,54 +276,124 @@ async function main() {
     });
 
     app.put('/listings/edit/:id', async function (req, res) {
-        let osCompatibility = req.body.osCompatibility; //checkbox
-        let hotSwappable = req.body.hotSwappable; //radio button
-        let switches = req.body.switches; // text --> validation more than 3 characters
-        let keyboardBrand = textValidation(req.body.keyboard.keyboardBrand); // dropdown with others option as text --> validation more than or equals to 3 characters
-        let keyboardModel = textValidation(req.body.keyboard.keyboardModel); // text --> validation more than or equals to 3 characters
-        let keyboardSize = req.body.keyboard.keyboardSize;// dropdown
-        let keyboardProductLink = urlValidation(req.body.keyboard.keyboardProductLink); // text -->validation, starts with https://
-        let keyboardImage = urlValidation(req.body.keyboard.keyboardImage); // text -->validation, starts with https://
-        let keycapModel = textValidation(req.body.keycap.keycapModel); // text --> validation more than or equals to 3 characters
-        let keycapMaterial = req.body.keycap.keycapMaterial; // radio button
-        let keycapProfile = req.body.keycap.keycapProfile; // dropdown
-        let keycapManufacturer = textValidation(req.body.keycap.keycapManufacturer); // text --> validation more than or equals to 3 characters
-        let username = req.body.user.username;
-        let email = emailValidation(req.body.user.email);
-        let resultsEditListingFind = await db.collection('mechanical_keyboards').findOne({
-            '_id': ObjectId(req.params.id)
-            },{
+        let osCompatibility = req.body.osCompatibility;
+        if (osCompatibility === "Windows" || osCompatibility === "Mac" || osCompatibility === "Linux") {
+            osCompatibility = req.body.osCompatibility;
+        } else {
+            osCompatibility = false;
+        };
+        let hotSwappable = req.body.hotSwappable;
+        if (hotSwappable === "true" || hotSwappable === "false") {
+            hotSwappable = req.body.hotSwappable;
+        } else {
+            hotSwappable = false;
+        };
+        let switches = TextValidation.connect(req.body.switches, 5);
+        let keyboardBrand = TextValidation.connect(req.body.keyboard.keyboardBrand, 5);
+        let keyboardModel = TextValidation.connect(req.body.keyboard.keyboardModel, 3);
+        let keyboardSize = req.body.keyboard.keyboardSize;
+        if (keyboardSize === "60" || keyboardSize === "65" || keyboardSize === "75" || keyboardSize === "80" || keyboardSize === "100") {
+            keyboardSize = req.body.keyboard.keyboardSize;
+        } else {
+            keyboardSize = false
+        }
+        let keyboardProductLink = UrlValidation.connect(req.body.keyboard.keyboardProductLink);
+        let keyboardImage = UrlValidation.connect(req.body.keyboard.keyboardImage);
+        let keycapModel = TextValidation.connect(req.body.keycap.keycapModel, 3);
+        let keycapMaterial = TextValidation.connect(req.body.keycap.keycapMaterial, 3);
+        let keycapProfile = TextValidation.connect(req.body.keycap.keycapProfile, 2);
+        let keycapManufacturer = TextValidation.connect(req.body.keycap.keycapManufacturer, 3);
+        let username = TextValidation.connect(req.body.user.username, 5);
+        let email = EmailValidation.connect(req.body.user.email);
 
-            }
+        validInput = (
+            osCompatibility == false ||
+            hotSwappable == false ||
+            switches == false ||
+            keyboardBrand == false ||
+            keyboardModel == false ||
+            keyboardSize == false ||
+            keyboardProductLink == false ||
+            keyboardImage == false ||
+            keycapModel == false ||
+            keycapMaterial == false ||
+            keycapProfile == false ||
+            keycapManufacturer == false ||
+            username == false ||
+            email == false
         )
-        let resultsEditListing = await db.collection('mechanical_keyboards').updateOne({
-            '_id': ObjectId(req.params.id)
-        }, {
-            '$set': {
-                osCompatibility,
-                hotSwappable,
-                switches,
-                'keyboard': {
-                    keyboardBrand,
-                    keyboardModel,
-                    keyboardSize,
-                    keyboardProductLink,
-                    keyboardImage
-                },
-                'keycap': {
-                    keycapModel,
-                    keycapMaterial,
-                    keycapProfile,
-                    keycapManufacturer
-                },
-                'user': {
-                    username,
-                    email
-                }
+
+        let record = {
+            osCompatibility,
+            hotSwappable,
+            switches,
+            'keyboard': {
+                keyboardBrand,
+                keyboardModel,
+                keyboardSize,
+                keyboardProductLink,
+                keyboardImage
+            },
+            'keycap': {
+                keycapModel,
+                keycapMaterial,
+                keycapProfile,
+                keycapManufacturer
+            },
+            'user': {
+                username,
+                email
             }
-        });
-        res.status(200);
-        res.json(resultsEditListing);
+        }
+        console.log(record)
+
+        if (validInput == false) {
+            console.log("else--->" + validInput)
+            console.log("Field Value Valid")
+            console.log(req.params.id)
+            try {
+                let resultsEditListing = await db.collection('mechanical_keyboards').updateOne({
+                    '_id': ObjectId(req.params.id)
+                }, {
+                    '$set': {
+                        osCompatibility,
+                        hotSwappable,
+                        switches,
+                        'keyboard': {
+                            keyboardBrand,
+                            keyboardModel,
+                            keyboardSize,
+                            keyboardProductLink,
+                            keyboardImage
+                        },
+                        'keycap': {
+                            keycapModel,
+                            keycapMaterial,
+                            keycapProfile,
+                            keycapManufacturer
+                        },
+                        'user': {
+                            username,
+                            email
+                        }
+                    }
+                });
+                res.status(200);
+                res.json(resultsEditListing);
+            } catch (e) {
+                res.status(500);
+                res.send({
+                    error: "Internal server error, please contact administrator"
+                })
+                console.log(e)
+            }
+        } else {
+            console.log("if--->" + validInput)
+            res.status(400)
+            res.send({
+                error: "Field Value invalid"
+            })
+        };
     })
 
 
@@ -353,7 +407,7 @@ async function main() {
         })
     })
 
-    app.listen(8000, () => {
+    app.listen( process.env.PORT, () => {
         console.log("Server started")
     })
 }
