@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const MongoUtil = require('./MongoUtil.js');
-const TextValidation = require('./TextValidation.js')
-const UrlValidation = require('./UrlValidation.js')
-const EmailValidation = require('./EmailValidation.js')
+const TextValidation = require('./TextValidation.js');
+const UrlValidation = require('./UrlValidation.js');
+const EmailValidation = require('./EmailValidation.js');
 require("dotenv").config();
 const MONGO_URI = process.env.MONGO_URI;
 const { ObjectId } = require('mongodb');
@@ -36,16 +36,16 @@ async function main() {
             criteria['hotSwappable'] = { '$eq': req.query.hotSwappable.toString() };
         };
         if (req.query.keyboardSize) {
-            let keyboardSize = req.query.keyboardSize
+            let keyboardSize = req.query.keyboardSize;
             if (keyboardSize.includes(',')) {
-                keyboardSize = keyboardSize.split(',')
+                keyboardSize = keyboardSize.split(',');
                 criteria['keyboard.keyboardSize'] = { '$in': keyboardSize };
             } else {
                 criteria['keyboard.keyboardSize'] = { '$in': [req.query.keyboardSize] };
             }
         };
         if (req.query.keyboardBrand) {
-            let keyboardBrand = req.query.keyboardBrand
+            let keyboardBrand = req.query.keyboardBrand;
             if (keyboardBrand.includes(',')) {
                 keyboardBrand = keyboardBrand.split(',')
                 criteria['keyboard.keyboardBrand'] = { '$exists': true, '$in': keyboardBrand };
@@ -54,39 +54,12 @@ async function main() {
             }
         };
         if (req.query.textSearch) {
-            criteria['text'] = { '$search': [req.query.textSearch], '$caseSensitive': false }
+            criteria['keyboard.keyboardModel'] = { $regex: req.query.textSearch, $options: 'i' };
         };
-        // create text index for text search
-        db.collection('mechanical_keyboards').createIndex({
-            'switches': "text",
-            'keyboard.keyboardBrand': "text",
-            'keyboard.keyboardModel': "text",
-            'keycap.keycapModel': "text",
-            'keycap.keycapMaterial': "text",
-            'keycap.keycapProfile': "text",
-            'keycap.keycapManufacturer': "text",
-        })
-
         let result = await db.collection('mechanical_keyboards').find(criteria);
         let resultCount = await db.collection('mechanical_keyboards').find(criteria).count();
         let result1 = await db.collection('mechanical_keyboards').find({});
         let resultCount1 = await db.collection('mechanical_keyboards').find({}).count();
-
-        // let result2 = await db.collection('mechanical_keyboards').find({
-        //     'osCompatibility': { '$in': ["Windows"] },
-        //     'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
-        //     'hotSwappable': { '$eq': "false" },
-        //     'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
-        //     '$text': { '$search': "tofu65", '$caseSensitive': false }
-        // })
-
-        // let resultCount2 = await db.collection('mechanical_keyboards').find({
-        //     'osCompatibility': { '$in': ["Windows"] },
-        //     'keyboard.keyboardSize': { '$in': ["80", "100", "65"] },
-        //     'hotSwappable': { '$eq': "false" },
-        //     'keyboard.keyboardBrand': { '$exists': true, '$in': ['Glorious', 'Keychron', 'Durgod', 'KBDfans', 'Pizzakeyboard', 'Wuque Studios'] },
-        //     '$text': { '$search': "tofu65", '$caseSensitive': false }
-        // }).count()
 
         let displayResponse = {
             data: await result.toArray(),
@@ -101,7 +74,7 @@ async function main() {
 
     app.post('/listings/create', async function (req, res) {
         let osCompatibility = req.body.osCompatibility;
-        if (osCompatibility === "Windows" || osCompatibility === "Mac" || osCompatibility === "Linux") {
+        if (osCompatibility.includes("Windows") || osCompatibility.includes("Mac") || osCompatibility.includes("Linux")) {
             osCompatibility = req.body.osCompatibility;
         } else {
             osCompatibility = false;
@@ -171,6 +144,8 @@ async function main() {
             'reviews': []
         }
         console.log(record)
+        console.log(osCompatibility,hotSwappable,switches,keyboardBrand,keyboardModel,keyboardSize,keyboardProductLink,keyboardImage,
+            keycapModel,keycapMaterial,keycapProfile,keycapManufacturer,username,email)
 
         if (validInput == false) {
             console.log("else--->" + validInput)
@@ -276,8 +251,9 @@ async function main() {
     });
 
     app.put('/listings/edit/:id', async function (req, res) {
+        // console.log(req.body)
         let osCompatibility = req.body.osCompatibility;
-        if (osCompatibility === "Windows" || osCompatibility === "Mac" || osCompatibility === "Linux") {
+        if (osCompatibility.includes("Windows") || osCompatibility.includes("Mac") || osCompatibility.includes("Linux")) {
             osCompatibility = req.body.osCompatibility;
         } else {
             osCompatibility = false;
@@ -407,9 +383,15 @@ async function main() {
         })
     })
 
-    app.listen( process.env.PORT, () => {
+    //for testing with react
+    app.listen(8000, () => {
         console.log("Server started")
     })
+
+    // for interaction with deployed react
+    // app.listen( process.env.PORT, () => {
+    //     console.log("Server started")
+    // })
 }
 
 main();
