@@ -384,14 +384,14 @@ async function main() {
     })
 
     //for testing with react
-    app.listen(8000, () => {
-        console.log("Server started")
-    })
-
-    // for interaction with deployed react
-    // app.listen( process.env.PORT, () => {
+    // app.listen(8000, () => {
     //     console.log("Server started")
     // })
+
+    // for interaction with deployed react
+    app.listen( process.env.PORT, () => {
+        console.log("Server started")
+    })
 }
 
 main();
